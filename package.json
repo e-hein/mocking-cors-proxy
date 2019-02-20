@@ -1,0 +1,38 @@
+{
+  "name": "mock-cors-proxy",
+  "version": "1.0.0",
+  "description": "mock cors header for development and testing",
+  "main": "lib/app.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.prod.json",
+    "prestart": "npm run build",
+    "start": "node dist/prod/app.js",
+    "test": "mocha -r ts-node/register lib/**/*.spec.ts",
+    "test:watch": "mocha -r ts-node/register lib/**/*.spec.ts --watch --watch-extensions ts"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://gitlab.code-better.it/open-source/mock-cors-proxy.git"
+  },
+  "keywords": [
+    "cors",
+    "proxy",
+    "mock",
+    "test",
+    "development",
+    "tools"
+  ],
+  "author": "Emanuel Hein",
+  "license": "Apache-2.0",
+  "devDependencies": {
+    "@types/chai": "^4.1.7",
+    "@types/mocha": "^5.2.6",
+    "chai": "^4.2.0",
+    "mocha": "^6.0.0",
+    "ts-node": "^8.0.2",
+    "typescript": "^3.3.3"
+  },
+  "files": [
+    "lib/prod/**/*"
+  ]
+}
