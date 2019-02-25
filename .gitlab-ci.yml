@@ -1,0 +1,25 @@
+stages:
+  - initialize
+  - test
+  - build
+  - release
+  - publish
+
+cache:
+  paths:
+    - node_modules/
+
+initialize-build:
+  stage: initialize
+  script:
+    - npm i
+
+test-proxy:
+  stage: test
+  script:
+    - npm run test
+
+build-proxy:
+  stage: build
+  script:
+    - npm run build
