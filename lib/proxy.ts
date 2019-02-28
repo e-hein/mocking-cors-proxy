@@ -1,9 +1,23 @@
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockCorsProxyConfig } from './proxy-config.model';
+import http from 'http';
 
 export class MockCorsProxy {
-  constructor(
-    public config: Readonly<MockCorsProxyConfig>,
-  ) {}
+  private server: http.Server;
 
-  public close() {}
+  constructor(
+    public config: Readonly<MockCorsProxyConfig> = new MockCorsProxyConfig(),
+  ) {
+    this.server = http.createServer((req, res) => {
+      res.writeHead(404);
+      res.end();
+    });
+  }
+
+  public listen(port = this.config.port) {
+    this.server.listen(port);
+  }
+
+  public close() {
+    this.server.close();
+  }
 }

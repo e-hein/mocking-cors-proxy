@@ -1,3 +1,3 @@
-export interface MockCorsProxyConfig {
-  port: number; // alternative proxy port (default: 80)
+export class MockCorsProxyConfig {
+  public port = 80;
 }
