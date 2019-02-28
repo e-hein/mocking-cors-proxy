@@ -7,8 +7,8 @@
     "build": "tsc -p tsconfig.prod.json",
     "prestart": "npm run build",
     "start": "node dist/prod/app.js",
-    "test": "mocha -r ts-node/register lib/**/*.spec.ts",
-    "test:watch": "mocha -r ts-node/register lib/**/*.spec.ts --watch --watch-extensions ts"
+    "test": "ts-mocha lib/**/*.spec.ts",
+    "test:watch": "ts-mocha -w lib/**/*.spec.ts --watch-extensions ts"
   },
   "repository": {
     "type": "git",
@@ -27,11 +27,12 @@
   "devDependencies": {
     "@types/chai": "^4.1.7",
     "@types/mocha": "^5.2.6",
-    "@types/node": "^11.9.4",
+    "@types/node": "^11.9.6",
     "chai": "^4.2.0",
-    "mocha": "^6.0.0",
-    "ts-node": "^8.0.2",
-    "typescript": "^3.3.3"
+    "mocha": "^6.0.2",
+    "ts-lint": "^4.5.1",
+    "ts-mocha": "^6.0.0",
+    "typescript": "^3.3.3333"
   },
   "files": [
     "lib/prod/**/*"
