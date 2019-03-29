@@ -54,10 +54,34 @@ describe('proxy', function () {
           expect(res.statusCode).to.equal(400);
           expect(res.statusMessage).to.contain('unkonwn protocol');
           expect(res.statusMessage).to.contain(protocol);
-          expect(Object.keys(responseValue)).to.contain('reason');
-          expect(Object.keys(responseValue)).to.contain('additionalInformation');
+          expect(responseValue).to.have.property('reason');
+          expect(responseValue).to.have.property('additionalInformation');
           done();
         })
+      });
+    });
+
+    describe('response preflight requests', function() {
+      it('should contain default cors headers', function(done) {
+        proxyConfig.accessControl.requestHeaders = ['X-CUSTOM-HEADER1', 'X-CUSTOM-HEADER2'];
+        http.request({
+          method: 'OPTIONS',
+          host: proxyHost,
+          port: proxyPort,
+          path: '/http/localhost',
+        }, (res) => {
+          const headersJson = JSON.stringify(res.rawHeaders);
+          expect(headersJson).to.contain('"Access-Control-Allow-Origin","*"');
+          proxyConfig.accessControl.methods.forEach((method) => {
+            expect(headersJson).to.contain(`"Access-Control-Allow-Methods","${method}"`);
+          });
+          proxyConfig.accessControl.requestHeaders.forEach((allowedRequestHeader) => {
+            expect(headersJson).to.contain(`"Access-Control-Request-Headers","${allowedRequestHeader}"`);
+          });
+          expect(headersJson).to.contain('"Access-Control-Allow-Credentials","true"');
+          expect(headersJson).to.contain(`"Access-Control-Max-Age","${proxyConfig.accessControl.maxAge}"`)
+          done();
+        }).end();
       });
     });
 
@@ -86,6 +110,17 @@ describe('proxy', function () {
           serverLogic = () => expect.fail('did not expect any requests on server')
           target = http.createServer((req, res) => serverLogic(req, res));
           target.listen(targetPort);
+        });
+
+        it('but option requests (preflights) should not get forwarded', function (done) {
+          serverLogic = () => expect.fail('forwarded request');
+
+          http.request({
+            method: 'OPTIONS',
+            host: proxyHost,
+            port: proxyPort,
+            path: requestPath,
+          }, () => done()).end();
         });
 
         describe('get', function () {
@@ -168,7 +203,7 @@ describe('proxy', function () {
         });
 
         describe('headers', function () {
-          it ('should forward request headers', function(done) {
+          it('should forward request headers', function(done) {
             serverLogic = (req) => {
               expect(req.headers['x-test']).to.equal('test');
               done();
@@ -184,21 +219,56 @@ describe('proxy', function () {
             }, () => {});
           });
 
-          it ('should forward response headers', function(done) {
+          it('should forward response headers', function(done) {
             serverLogic = (_req, res) => {
-              res.setHeader('x-test', 'test');
-              res.setHeader('date', '2010-10-10T00:00:00.000Z');
-              res.writeHead(201, 'head');
+              res.writeHead(201, 'head', {
+                'X-Test': 'test',
+                'date': '2010-10-10T00:00:00.000Z',
+              });
               res.end();
             };
 
             http.get(requestUrl, (res) => {
-              expect(res.headers).to.contain({
-                'x-test': 'test',
-                'date': '2010-10-10T00:00:00.000Z',
-              });
+              const headersJson = JSON.stringify(res.rawHeaders);
+              expect(headersJson).to.contain('"X-Test","test"');
+              expect(headersJson).to.contain('"date","2010-10-10T00:00:00.000Z"');
               done();
             });
+          });
+
+          it('should add cors to response', function (done) {
+            const origin = 'localhost';
+            const methods = ['GET', 'DELETE', 'PURGE'];
+            const date = '2010-10-10T00:00:00.000Z';
+            serverLogic = (_req, res) => {
+              res.setHeader('allow', methods);
+              res.setHeader('date', date);
+              res.writeHead(201, 'head');
+              res.write('data1');
+              res.write('data2');
+              res.end();
+            }
+
+            http.request({
+              method: 'GET',
+              host: proxyHost,
+              port: proxyPort,
+              path: requestPath,
+              headers: { origin },
+            }, (res) => {
+              const headersJson = JSON.stringify(res.rawHeaders);
+              expect(headersJson).to.contain(`"Access-Control-Allow-Origin","${origin}"`);
+              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","GET"`);
+              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","DELETE"`);
+              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","PURGE"`);
+              expect(headersJson).to.contain(`"Access-Control-Allow-Credentials","true"`);
+              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","allow"`);
+              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","date"`);
+              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","Connection"`);
+              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","Transfer-Encoding"`);
+              expect(headersJson).to.contain(`"Access-Control-Max-Age","10"`);
+              done();
+            }).end();
           });
         });
 

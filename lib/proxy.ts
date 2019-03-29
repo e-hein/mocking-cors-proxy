@@ -1,10 +1,14 @@
 import { MockCorsProxyConfig } from './proxy-config.model';
-import { createServer, request as startHttpRequest, IncomingMessage, RequestOptions, Server, ServerResponse } from 'http';
+import {
+  createServer, request as startHttpRequest, METHODS as HTTP_METHODS, IncomingMessage,
+  RequestOptions, Server, ServerResponse, OutgoingHttpHeaders, IncomingHttpHeaders } from 'http';
+import { sillyReadRawHeaders } from './silly-read-raw-headers.function';
 
 const reasons = {
   notImplementedYet: `it's not implemented yet`,
   target: `target is a required additional path segment`,
 }
+
 export class MockCorsProxy {
   public readonly protocols: { [protocol: string]: (req: IncomingMessage, res: ServerResponse, path: string[]) => void} = {};
   public get registeredProtocols() {
@@ -33,6 +37,11 @@ export class MockCorsProxy {
   ) {
     this.server = createServer((req, res) => {
       const fail = this.fail(res);
+
+      if (req.method === 'OPTIONS') {
+        return this.createPreflightResponse(req, res);
+      }
+
       const url = req.url;
       if (!url) {
         return fail.withReason(`protocol is required as first path segment`);
@@ -57,6 +66,13 @@ export class MockCorsProxy {
     this.protocols.https = (req, res, path) => this.forward(req, res, 'https', path);
   }
 
+  private createPreflightResponse(req: IncomingMessage, res: ServerResponse) {
+    const corsHeaders = this.corsHeadersFor(req);
+    this.config.log.info('corsHeaders', corsHeaders);
+    res.writeHead(200, 'OK', corsHeaders);
+    res.end();
+  }
+
   private forward(proxyRequest: IncomingMessage, proxyResponse: ServerResponse, protocol: 'http' | 'https', path: string[]) {
     const target = path.shift();
     if (!target) return this.fail(proxyResponse).withReason(reasons.target);
@@ -69,15 +85,46 @@ export class MockCorsProxy {
     this.config.log.info(options);
 
     const targetRequest = startHttpRequest(options, (targetResponse) => {
-      Object.entries(targetResponse.headers).forEach(([key, value]) => {
-        if (value) proxyResponse.setHeader(key, value);
-      });
-      proxyResponse.writeHead(targetResponse.statusCode || 200, targetResponse.statusMessage);
+      const incomingHeaders = sillyReadRawHeaders(targetResponse.rawHeaders);
+      this.config.log.info('incoming headers', incomingHeaders);
+      const corsHeaders = this.corsHeadersFor(proxyRequest, targetResponse, incomingHeaders);
+      const outgoingHeaders: OutgoingHttpHeaders = Object.entries({
+        ...incomingHeaders,
+        ...corsHeaders,
+      })
+        .map(([key, value]) => value ? { key, value } : undefined)
+        .filter((entry): entry is { key: string, value: string | string[] } => !!(entry && entry.value))
+        .reduce((outgoingHeaders, header) => Object.assign(outgoingHeaders, { [header.key]: header.value }), {})
+      ;
+      this.config.log.info('outgoing headers', outgoingHeaders);
+      proxyResponse.writeHead(targetResponse.statusCode || 200, targetResponse.statusMessage, outgoingHeaders);
 
       targetResponse.pipe(proxyResponse);
     });
 
     proxyRequest.pipe(targetRequest);
+  }
+
+  private corsHeadersFor(proxyRequest: IncomingMessage, targetResponse?: IncomingMessage, incomingHeaders?: OutgoingHttpHeaders): { [key: string]: string | string[] } {
+    const corsHeaders: { [key: string]: string | string[] } = {
+      'Access-Control-Allow-Origin': proxyRequest.headers.origin || '*',
+      'Access-Control-Allow-Methods': false
+        || targetResponse && targetResponse.headers.allow && targetResponse.headers.allow.split(/\s*,\s*/)
+        || proxyRequest.headers['Access-Control-Request-Method']
+        || (proxyRequest.method === 'OPTIONS' || !proxyRequest.method ? this.config.accessControl.methods : proxyRequest.method)
+      ,
+      'Access-Control-Allow-Credentials': 'true',
+      'Access-Control-Max-Age': '' + this.config.accessControl.maxAge,
+    };
+    const exposeHeaders = false
+    || incomingHeaders && Object.keys(incomingHeaders)
+    || targetResponse && Object.keys(sillyReadRawHeaders(targetResponse.rawHeaders))
+    ;
+    if (exposeHeaders) corsHeaders['Access-Control-Expose-Headers'] = exposeHeaders;
+    if (proxyRequest.method === 'OPTIONS') {
+      corsHeaders['Access-Control-Request-Headers'] = this.config.accessControl.requestHeaders;
+    }
+    return corsHeaders;
   }
 
   public listen(port = this.config.port) {
