@@ -1,0 +1,21 @@
+{
+  "extends": [
+    "tslint:recommended"
+  ],
+  "jsRules": {},
+  "rules": {
+    "object-literal-sort-keys": false,
+    "only-arrow-functions": false,
+    "variable-name": [true, "allow-leading-underscore", "ban-keywords"]
+  },
+  "rulesDirectory": [],
+  "overrides": [
+    {
+      "files": [ "**/*.ts" ],
+      "excludedFiles": "*.spec.ts",
+      "rules": {
+        "only-arrow-functions": true
+      }
+    }
+  ]
+}
