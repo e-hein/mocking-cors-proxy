@@ -1,5 +1,5 @@
 import { MockCorsProxyConfig } from './proxy-config.model';
-import http, { createServer, request as startHttpRequest, IncomingMessage, RequestOptions, Server, ServerResponse } from 'http';
+import { createServer, request as startHttpRequest, IncomingMessage, RequestOptions, Server, ServerResponse } from 'http';
 
 const reasons = {
   notImplementedYet: `it's not implemented yet`,
@@ -39,6 +39,7 @@ export class MockCorsProxy {
       }
 
       const [protocol, ...path] = url.split('/').slice(1);
+      this.config.log.info('got', protocol, path);
       const handle = this.protocols[protocol];
       if (typeof handle === 'function') {
         return handle(req, res, path);
@@ -71,6 +72,7 @@ export class MockCorsProxy {
 
       targetResponse.pipe(proxyResponse);
     });
+
     proxyRequest.pipe(targetRequest);
   }
 

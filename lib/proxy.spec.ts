@@ -1,20 +1,21 @@
 import { MockCorsProxy } from './proxy';
 import { expect } from 'chai';
-import http from 'http';
+import http, { IncomingMessage } from 'http';
 import { MockCorsProxyConfig } from './proxy-config.model';
 
 let nextPort = 2345;
 
-describe('proxy', () => {
+describe('proxy', function () {
+  this.timeout(100);
 
-  describe('started', () => {
+  describe('started', function () {
     const proxyPort = nextPort++;
     const proxyHost = 'localhost';
     const proxyUrl = `http://${proxyHost}:${proxyPort}`;
     let proxy: MockCorsProxy;
     let proxyConfig: MockCorsProxyConfig;
 
-    beforeEach(() => {
+    beforeEach(function () {
       proxyConfig = new MockCorsProxyConfig();
       proxyConfig.log = {
         info: () => {},
@@ -26,6 +27,10 @@ describe('proxy', () => {
 
     function thisTestShouldNotFailOnErrorResponse() {
       proxyConfig.log.error = () => {};
+    }
+
+    function thisTestShouldLogInfoMessages() {
+      proxyConfig.log.info = (...args) => console.log(...args);
     }
 
     it('should be up', function (done) {
@@ -56,9 +61,8 @@ describe('proxy', () => {
       });
     });
 
-    describe('forward request', () => {
+    describe('forward request', function() {
       it('should return failure response if target path segment is missing', function(done) {
-        this.timeout(100);
         thisTestShouldNotFailOnErrorResponse();
         const requestUrl = proxyUrl + '/http';
 
@@ -68,11 +72,13 @@ describe('proxy', () => {
         });
       });
 
-      describe('to test endpoint', () => {
+      describe('to test endpoint', function() {
         const targetProtocol = 'http';
         const targetHost = '127.0.0.1';
         const targetPort = nextPort++;
-        const requestUrl = proxyUrl + `/${targetProtocol}/${targetHost}:${targetPort}`;
+
+        const requestPath = `/${targetProtocol}/${targetHost}:${targetPort}`;
+        const requestUrl = proxyUrl + requestPath;
         let target: http.Server;
         let serverLogic: (req: http.IncomingMessage, res: http.ServerResponse) => void;
 
@@ -82,36 +88,87 @@ describe('proxy', () => {
           target.listen(targetPort);
         });
 
-        it('should forward get request', function (done) {
-          this.timeout(100);
-          serverLogic = () => done();
+        describe('get', function () {
+          it('should forward request', function (done) {
+            serverLogic = () => done();
 
-          http.get(requestUrl);
+            http.get(requestUrl);
+          });
+
+          it('should forward response with body', function (done) {
+            serverLogic = (_req, res) => {
+              res.writeHead(201, 'head');
+              res.write('data1');
+              res.write('data2');
+              res.end();
+            }
+
+            http.get(requestUrl, (res) => {
+              let data: string [] = [];
+              res.on('data', (chunk) => data.push(chunk.toString()));
+              res.on('end', () => {
+                expect(res.statusCode).to.equal(201);
+                expect(res.statusMessage).to.equal('head');
+                expect(data).to.eql(['data1', 'data2']);
+                done();
+              })
+            })
+          });
         });
 
-        it('should forward response with body', function (done) {
-          this.timeout(100);
-          serverLogic = (_req, res) => {
-            res.writeHead(201, 'head');
-            res.write('data1');
-            res.write('data2');
-            res.end();
-          }
+        describe('post', function() {
+          it('should forward request with payload', function (done) {
 
-          http.get(requestUrl, (res) => {
-            let data: string [] = [];
-            res.on('data', (chunk) => data.push(chunk.toString()));
-            res.on('end', () => {
-              expect(res.statusCode).to.equal(201);
-              expect(res.statusMessage).to.equal('head');
+            let data: string[] = [];
+            let test = () => {};
+            serverLogic = (req) => {
+              req.on('data', (chunk) => data.push(chunk.toString()));
+              req.on('end', () => test());
+            };
+
+            const testRequest = http.request({
+              method: 'POST',
+              host: proxyHost,
+              port: proxyPort,
+              path: requestPath,
+            });
+            testRequest.write('data1');
+            testRequest.write('data2');
+            testRequest.end();
+
+            test = () => {
               expect(data).to.eql(['data1', 'data2']);
               done();
-            })
-          })
-        })
+            };
+          });
+
+          it('should forward response', function (done) {
+            let test: (res: IncomingMessage) => void;
+            serverLogic = (_req, res) => {
+              res.writeHead(201, 'head');
+              res.end();
+            };
+
+            const testRequest = http.request({
+              method: 'POST',
+              host: proxyHost,
+              port: proxyPort,
+              path: requestPath,
+            }, (res) => test(res));
+            testRequest.write('data1');
+            testRequest.write('data2');
+            testRequest.end();
+
+            test = (res: IncomingMessage) => {
+              expect(res.statusCode).to.equal(201);
+              expect(res.statusMessage).to.equal('head');
+              done();
+            };
+          });
+        });
 
         afterEach(() => target.close());
-      })
+      });
 
     });
 
