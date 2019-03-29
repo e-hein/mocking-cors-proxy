@@ -64,10 +64,14 @@ export class MockCorsProxy {
     const [hostname, port] = target.split(':');
     const options = {
       protocol: protocol + ':', hostname, port, method: proxyRequest.method,
+      headers: proxyRequest.headers,
     } as RequestOptions;
     this.config.log.info(options);
 
     const targetRequest = startHttpRequest(options, (targetResponse) => {
+      Object.entries(targetResponse.headers).forEach(([key, value]) => {
+        if (value) proxyResponse.setHeader(key, value);
+      });
       proxyResponse.writeHead(targetResponse.statusCode || 200, targetResponse.statusMessage);
 
       targetResponse.pipe(proxyResponse);

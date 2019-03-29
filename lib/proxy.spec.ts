@@ -167,6 +167,41 @@ describe('proxy', function () {
           });
         });
 
+        describe('headers', function () {
+          it ('should forward request headers', function(done) {
+            serverLogic = (req) => {
+              expect(req.headers['x-test']).to.equal('test');
+              done();
+            };
+
+            http.get({
+              host: proxyHost,
+              port: proxyPort,
+              path: requestPath,
+              headers: {
+                'x-test': 'test',
+              },
+            }, () => {});
+          });
+
+          it ('should forward response headers', function(done) {
+            serverLogic = (_req, res) => {
+              res.setHeader('x-test', 'test');
+              res.setHeader('date', '2010-10-10T00:00:00.000Z');
+              res.writeHead(201, 'head');
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              expect(res.headers).to.contain({
+                'x-test': 'test',
+                'date': '2010-10-10T00:00:00.000Z',
+              });
+              done();
+            });
+          });
+        });
+
         afterEach(() => target.close());
       });
 
