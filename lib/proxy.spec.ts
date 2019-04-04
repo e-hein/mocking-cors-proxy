@@ -1,11 +1,26 @@
 import { expect } from "chai";
-import http, { IncomingMessage } from "http";
+import http, { IncomingHttpHeaders, IncomingMessage } from "http";
 
 import { MockCorsProxy } from "./proxy";
 import { MockCorsProxyConfig } from "./proxy-config.model";
 
 let nextPort = 2345;
 const infoLogAll = false;
+const shouldNotBeThere = null;
+
+const expectedHeaders = (expected: Array<{ key: string, value: any | null }>) =>
+  (actual: IncomingHttpHeaders) => {
+    const headersAsJson = JSON.stringify(actual);
+    expected.forEach(({ key, value }) => {
+      if (value === shouldNotBeThere) {
+        expect(headersAsJson).not.to.contain(`"${key}"`);
+      } else {
+        expect(headersAsJson).to.contain(`"${key}","${value}"`);
+      }
+    });
+    return true;
+  }
+;
 
 describe("proxy", function() {
   this.timeout(500);
@@ -69,27 +84,29 @@ describe("proxy", function() {
 
     describe("response preflight requests", function() {
       it("should contain default cors headers", function(done) {
-        proxyConfig.accessControl.requestHeaders = ["X-CUSTOM-HEADER1", "X-CUSTOM-HEADER2"];
+        const customHeaders = ["X-CUSTOM-HEADER1", "X-CUSTOM-HEADER2"];
+        const allowedMethods = ["GET", "PUT", "CUSTOM"];
+        const maxAge = 13;
+
+        proxyConfig.accessControl = {
+          requestHeaders: customHeaders,
+          methods: allowedMethods,
+          maxAge,
+        };
+
         http.request({
           method: "OPTIONS",
           host: proxyHost,
           port: proxyPort,
           path: "/http/localhost",
         }, (res) => {
-          console.log("preflight");
-          // expect(res.rawHeaders).to.satisfies(expectedHeaders([
-          //   { key: "Access-Control-Allow-Origin", value: "*" },
-          // ]));
-          const headersJson = JSON.stringify(res.rawHeaders);
-          expect(headersJson).to.contain('"Access-Control-Allow-Origin","*"');
-          proxyConfig.accessControl.methods.forEach((method) => {
-            expect(headersJson).to.contain(`"Access-Control-Allow-Methods","${method}"`);
-          });
-          proxyConfig.accessControl.requestHeaders.forEach((allowedRequestHeader) => {
-            expect(headersJson).to.contain(`"Access-Control-Request-Headers","${allowedRequestHeader}"`);
-          });
-          expect(headersJson).to.contain('"Access-Control-Allow-Credentials","true"');
-          expect(headersJson).to.contain(`"Access-Control-Max-Age","${proxyConfig.accessControl.maxAge}"`);
+          expect(res.rawHeaders).to.satisfies(expectedHeaders([
+            { key: "Access-Control-Allow-Origin", value: "*" },
+            ...allowedMethods.map((method) => ({ key: "Access-Control-Allow-Methods", value: method })),
+            ...customHeaders.map((header) => ({ key: "Access-Control-Request-Headers", value: header })),
+            { key: "Access-Control-Allow-Credentials", value: true },
+            { key: "Access-Control-Max-Age", value: maxAge },
+          ]));
           done();
         }).end();
       });
@@ -243,9 +260,11 @@ describe("proxy", function() {
             };
 
             http.get(requestUrl, (res) => {
-              const headersJson = JSON.stringify(res.rawHeaders);
-              expect(headersJson).to.contain('"X-Test","test"');
-              expect(headersJson).to.contain('"date","2010-10-10T00:00:00.000Z"');
+              expect(res.rawHeaders).to.satisfies(expectedHeaders([
+                { key: "X-Test", value: "test" },
+                { key: "x-test", value: shouldNotBeThere },
+                { key: "date", value: "2010-10-10T00:00:00.000Z" },
+              ]));
               done();
             });
           });
@@ -270,17 +289,14 @@ describe("proxy", function() {
               path: requestPath,
               headers: { origin },
             }, (res) => {
-              const headersJson = JSON.stringify(res.rawHeaders);
-              expect(headersJson).to.contain(`"Access-Control-Allow-Origin","${origin}"`);
-              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","GET"`);
-              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","DELETE"`);
-              expect(headersJson).to.contain(`"Access-Control-Allow-Methods","PURGE"`);
-              expect(headersJson).to.contain(`"Access-Control-Allow-Credentials","true"`);
-              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","allow"`);
-              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","date"`);
-              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","Connection"`);
-              expect(headersJson).to.contain(`"Access-Control-Expose-Headers","Transfer-Encoding"`);
-              expect(headersJson).to.contain(`"Access-Control-Max-Age","10"`);
+              expect(res.rawHeaders).to.satisfy(expectedHeaders([
+                { key: "Access-Control-Allow-Origin", value: origin },
+                ...methods.map((method) => ({ key: "Access-Control-Allow-Methods", value: method })),
+                { key: "Access-Control-Expose-Headers", value: "allow" },
+                { key: "Access-Control-Expose-Headers", value: "date" },
+                { key: "Access-Control-Expose-Headers", value: "Connection" },
+                { key: "Access-Control-Expose-Headers", value: "Transfer-Encoding" },
+              ]));
               done();
             }).end();
           });
