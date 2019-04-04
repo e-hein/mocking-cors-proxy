@@ -65,8 +65,8 @@ export class MockCorsProxy {
     this.server.listen(port);
   }
 
-  public close() {
-    this.server.close();
+  public close(cb?: () => void): Server {
+    return this.server.close(cb);
   }
 
   private fail = (res: ServerResponse) => ({

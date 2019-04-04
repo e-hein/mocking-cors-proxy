@@ -8,7 +8,7 @@ let nextPort = 2345;
 const infoLogAll = false;
 
 describe("proxy", function() {
-  this.timeout(100);
+  this.timeout(500);
 
   describe("started", function() {
     const proxyPort = nextPort++;
@@ -76,6 +76,10 @@ describe("proxy", function() {
           port: proxyPort,
           path: "/http/localhost",
         }, (res) => {
+          console.log("preflight");
+          // expect(res.rawHeaders).to.satisfies(expectedHeaders([
+          //   { key: "Access-Control-Allow-Origin", value: "*" },
+          // ]));
           const headersJson = JSON.stringify(res.rawHeaders);
           expect(headersJson).to.contain('"Access-Control-Allow-Origin","*"');
           proxyConfig.accessControl.methods.forEach((method) => {
@@ -131,9 +135,12 @@ describe("proxy", function() {
 
         describe("get", function() {
           it("should forward request", function(done) {
-            serverLogic = () => done();
+            serverLogic = (_req, res) => {
+              res.writeHead(200);
+              res.end();
+            };
 
-            http.get(requestUrl);
+            http.get(requestUrl, () => done());
           });
 
           it("should forward response with body", function(done) {
@@ -161,10 +168,11 @@ describe("proxy", function() {
           it("should forward request with payload", function(done) {
 
             const data: string[] = [];
-            let test: () => void;
-            serverLogic = (req) => {
+            serverLogic = (req, res) => {
               req.on("data", (chunk) => data.push(chunk.toString()));
-              req.on("end", () => test());
+              req.on("end", () => res.end());
+              res.writeHead(200);
+              res.end();
             };
 
             const testRequest = http.request({
@@ -172,15 +180,14 @@ describe("proxy", function() {
               host: proxyHost,
               port: proxyPort,
               path: requestPath,
+            }, () => {
+              expect(data).to.eql(["data1", "data2"]);
+              done();
             });
+
             testRequest.write("data1");
             testRequest.write("data2");
             testRequest.end();
-
-            test = () => {
-              expect(data).to.eql(["data1", "data2"]);
-              done();
-            };
           });
 
           it("should forward response", function(done) {
@@ -210,9 +217,10 @@ describe("proxy", function() {
 
         describe("headers", function() {
           it("should forward request headers", function(done) {
-            serverLogic = (req) => {
+            serverLogic = (req, res) => {
               expect(req.headers["x-test"]).to.equal("test");
-              done();
+              res.writeHead(200);
+              res.end();
             };
 
             http.get({
@@ -222,7 +230,7 @@ describe("proxy", function() {
               headers: {
                 "x-test": "test",
               },
-            }, () => { /* do nothing */ });
+            }, () => done());
           });
 
           it("should forward response headers", function(done) {
@@ -278,12 +286,12 @@ describe("proxy", function() {
           });
         });
 
-        afterEach(() => target.close());
+        afterEach((done) => target.close(done));
       });
 
     });
 
-    afterEach(() => proxy.close());
+    afterEach((done) => proxy.close(done));
   });
 
 });
