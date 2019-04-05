@@ -302,6 +302,22 @@ describe("proxy", function() {
           });
         });
 
+        describe("rewrite cookies", () => {
+          it("adjust domain", (done) => {
+            serverLogic = (_req, res) => {
+              res.writeHead(200, undefined, {
+                "Set-Cookie": `name=SESSION_ID,domain=${targetHost},value=1948910`,
+              });
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              expect(res.headers["Set-Cookie"]).to.eql(`name=SESSION_I D,domain=${proxyHost},value=1948910}`);
+              done();
+            });
+          });
+        });
+
         afterEach((done) => target.close(done));
       });
 
