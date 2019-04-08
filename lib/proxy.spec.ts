@@ -29,6 +29,8 @@ describe("proxy", function() {
     const proxyPort = nextPort++;
     const proxyHost = "localhost";
     const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+    const warnings: any[][] = [];
+    const errors: any[][] = [];
     let proxy: MockCorsProxy;
     let proxyConfig: MockCorsProxyConfig;
 
@@ -36,7 +38,8 @@ describe("proxy", function() {
       proxyConfig = new MockCorsProxyConfig();
       proxyConfig.log = {
         info: () => { /* do not log*/},
-        error: (...args) => expect.fail(undefined, undefined, args.join(" ")),
+        warn: (...args) => warnings.push(args),
+        error: (...args) => errors.push(args),
       };
       if (infoLogAll) {
         thisTestShouldLogInfoMessages();
@@ -51,7 +54,7 @@ describe("proxy", function() {
 
     function thisTestShouldLogInfoMessages() {
       // tslint:disable-next-line: no-console
-      proxyConfig.log.info = (...args) => console.log(...args);
+      proxyConfig.log.info = (...args) => console.log("\n", ...args);
     }
 
     it("should be up", function(done) {
@@ -101,7 +104,7 @@ describe("proxy", function() {
           path: "/http/localhost",
         }, (res) => {
           expect(res.rawHeaders).to.satisfies(expectedHeaders([
-            { key: "Access-Control-Allow-Origin", value: "*" },
+            { key: "Access-Control-Allow-Origin", value: "localhost:2345" },
             ...allowedMethods.map((method) => ({ key: "Access-Control-Allow-Methods", value: method })),
             ...customHeaders.map((header) => ({ key: "Access-Control-Request-Headers", value: header })),
             { key: "Access-Control-Allow-Credentials", value: true },
@@ -303,16 +306,96 @@ describe("proxy", function() {
         });
 
         describe("rewrite cookies", () => {
-          it("adjust domain", (done) => {
+          it("should warn for invalid cookies but forward them untouched", (done) => {
             serverLogic = (_req, res) => {
-              res.writeHead(200, undefined, {
-                "Set-Cookie": `name=SESSION_ID,domain=${targetHost},value=1948910`,
+              res.writeHead(200, "Ok", {
+                "Set-Cookie": "=",
               });
               res.end();
             };
 
             http.get(requestUrl, (res) => {
-              expect(res.headers["Set-Cookie"]).to.eql(`name=SESSION_I D,domain=${proxyHost},value=1948910}`);
+              expect("" + warnings.shift()).to.contain("invalid cookie");
+              expect(res.rawHeaders).to.satisfy(expectedHeaders([
+                { key: "Set-Cookie", value: "="},
+              ]));
+              done();
+            });
+          });
+
+          it("adjust domain", (done) => {
+            serverLogic = (_req, res) => {
+              res.writeHead(200, "Ok", {
+                "Set-Cookie": `SESSION_ID=1948910; Domain=${targetHost}; Secure; HttpsOnly`,
+              });
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              const cookieHeader = res.headers["set-cookie"];
+              if (!cookieHeader) {
+                throw new Error("cookie header not set");
+              }
+              expect(cookieHeader.length).to.be.equal(1, "too many cookie headers");
+              expect(cookieHeader[0]).to.contain(`Domain=${proxyHost}`);
+              done();
+            });
+          });
+
+          it("adjust path", (done) => {
+            serverLogic = (_req, res) => {
+              res.writeHead(200, "Ok", {
+                "Set-Cookie": `SESSION_ID=1948910; Domain=${targetHost}; Path=/test; Secure; HttpsOnly`,
+              });
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              const cookieHeader = res.headers["set-cookie"];
+              if (!cookieHeader) {
+                throw new Error("cookie header not set");
+              }
+              expect(cookieHeader.length).to.be.equal(1, "too many cookie headers");
+              expect(cookieHeader[0]).to.contain(`Path=/${targetProtocol}/${targetHost}:${targetPort}/test`);
+              done();
+            });
+          });
+
+          it("remove security by default", (done) => {
+            serverLogic = (_req, res) => {
+              res.writeHead(200, "Ok", {
+                "Set-Cookie": `SESSION_ID=1948910; Domain=${targetHost}; Path=/test; Secure; HttpsOnly`,
+              });
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              const cookieHeader = res.headers["set-cookie"];
+              if (!cookieHeader) {
+                throw new Error("cookie header not set");
+              }
+              expect(cookieHeader.length).to.be.equal(1, "too many cookie headers");
+              expect(cookieHeader[0]).not.to.contain("Secure").and.not.to.contain("HttpsOnly");
+              done();
+            });
+          });
+
+          it("keep security if configured", (done) => {
+            proxyConfig.security = true;
+            serverLogic = (_req, res) => {
+              res.writeHead(200, "Ok", {
+                "Set-Cookie": `SESSION_ID=1948910; Domain=${targetHost}; Path=/test; Secure; HttpsOnly`,
+              });
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              const cookieHeader = res.headers["set-cookie"];
+              if (!cookieHeader) {
+                throw new Error("cookie header not set");
+              }
+              expect(cookieHeader.length).to.be.equal(1, "too many cookie headers");
+              expect(cookieHeader[0]).to.contain("Secure").and.to.contain("HttpsOnly");
               done();
             });
           });
@@ -323,7 +406,11 @@ describe("proxy", function() {
 
     });
 
-    afterEach((done) => proxy.close(done));
+    afterEach((done) => {
+      proxy.close(done);
+      expect(errors).to.eql([], "errors should be empty");
+      expect(warnings).to.be.eql([], "warnings should be empty");
+    });
   });
 
 });

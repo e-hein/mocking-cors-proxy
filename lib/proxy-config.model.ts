@@ -5,6 +5,7 @@ export class MockCorsProxyConfig {
   public log = {
     info: (...args: any[]) => console.log(...args),
     error: (...args: any[]) => console.error(...args),
+    warn: (...args: any[]) => console.error(...args),
   };
   // tslint:enable: no-console
   public accessControl: {
@@ -16,4 +17,5 @@ export class MockCorsProxyConfig {
     requestHeaders: [],
     maxAge: 10,
   };
+  public security = false;
 }
