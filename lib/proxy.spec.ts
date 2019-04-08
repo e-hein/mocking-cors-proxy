@@ -65,6 +65,15 @@ describe("proxy", function() {
       });
     });
 
+    it("should return failure response if protocol path part is missing", (done) => {
+      http.get(proxyUrl, (res) => {
+        expect(res.statusCode).to.be.equal(400);
+        expect(errors.length).to.equal(1);
+        errors.shift();
+        done();
+      });
+    });
+
     it("should give useful error responses", function(done) {
       thisTestShouldNotFailOnErrorResponse();
       const protocol = proxy.config.testUrl + "-unknown";

@@ -9,7 +9,17 @@
     "start": "node dist/prod/app.js",
     "test": "ts-mocha lib/**/*.spec.ts",
     "test:watch": "ts-mocha -w lib/**/*.spec.ts --watch-extensions ts",
+    "coverage": "nyc --reporter=html mocha -r ts-node/register **/*.spec.ts",
     "lint": "tslint -c tslint.json lib/**/*.ts"
+  },
+  "nyc": {
+    "include": [ "lib/**/*.ts" ],
+    "exclude": [ "lib/**/*.spec.ts "],
+    "extension": [ ".ts" ],
+    "require": [ "ts-node/register" ],
+    "reporter": [ "html" ],
+    "sourceMap": true,
+    "instrument": true
   },
   "repository": {
     "type": "git",
@@ -31,8 +41,11 @@
     "@types/node": "^11.9.6",
     "chai": "^4.2.0",
     "mocha": "^6.0.2",
+    "nyc": "^13.3.0",
+    "proxyquire": "^2.1.0",
     "ts-lint": "^4.5.1",
     "ts-mocha": "^6.0.0",
+    "ts-node": "^8.0.3",
     "typescript": "^3.3.3333"
   },
   "files": [

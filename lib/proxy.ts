@@ -48,7 +48,8 @@ export class MockCorsProxy {
       }
 
       const url = req.url;
-      if (!url) {
+      this.config.log.info("requested url", url);
+      if (!url || url.length < 1 || url === "/") {
         return fail.withReason(`protocol is required as first path segment`);
       }
 
