@@ -162,6 +162,21 @@ describe("proxy", function() {
           }, () => done()).end();
         });
 
+        describe("error", function() {
+          it("should forward error response", function(done) {
+            serverLogic = (_req, res) => {
+              res.writeHead(401, "unauthorized");
+              res.end();
+            };
+
+            http.get(requestUrl, (res) => {
+              expect(res.statusCode).to.equal(401);
+              expect(res.statusMessage).to.equal("unauthorized");
+              done();
+            });
+          });
+        });
+
         describe("get", function() {
           it("should forward request", function(done) {
             serverLogic = (_req, res) => {
