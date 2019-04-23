@@ -76,7 +76,7 @@ describe("proxy", function() {
 
     it("should give useful error responses", function(done) {
       thisTestShouldNotFailOnErrorResponse();
-      const protocol = proxy.config.testUrl + "-unknown";
+      const protocol = "unknown";
       const requestUrl = proxyUrl + "/" + protocol;
 
       http.get(requestUrl, (res) => {
@@ -85,7 +85,7 @@ describe("proxy", function() {
         res.on("end", () => {
           const responseValue = JSON.parse(data);
           expect(res.statusCode).to.equal(400);
-          expect(res.statusMessage).to.contain("unkonwn protocol");
+          expect(res.statusMessage).to.contain("no controller");
           expect(res.statusMessage).to.contain(protocol);
           expect(responseValue).to.have.property("reason");
           expect(responseValue).to.have.property("additionalInformation");
@@ -124,7 +124,7 @@ describe("proxy", function() {
       });
     });
 
-    describe("forward request", function() {
+    describe("forward generic request", function() {
       it("should return failure response if target path segment is missing", function(done) {
         thisTestShouldNotFailOnErrorResponse();
         const requestUrl = proxyUrl + "/http";
@@ -185,6 +185,22 @@ describe("proxy", function() {
             };
 
             http.get(requestUrl, () => done());
+          });
+
+          it("should map path", function(done) {
+            const requestEndpoint = "/rest/obj?q=search";
+            let requestedUrl: string | undefined;
+
+            serverLogic = (req, res) => {
+              requestedUrl = req.url;
+              res.writeHead(200, "OK");
+              res.end();
+            };
+
+            http.get(requestUrl + requestEndpoint, () => {
+              expect(requestedUrl).to.equal(`${requestEndpoint}`);
+              done();
+            });
           });
 
           it("should forward response with body", function(done) {
@@ -428,6 +444,39 @@ describe("proxy", function() {
         afterEach((done) => target.close(done));
       });
 
+    });
+
+    describe("forward to register static route", function() {
+      const targetProtocol = "http";
+      const targetHost = "127.0.0.1";
+      const targetPort = nextPort++;
+      const targetUrl = `${targetProtocol}://${targetHost}:${targetPort}`;
+
+      let target: http.Server;
+      let serverLogic: (req: http.IncomingMessage, res: http.ServerResponse) => void;
+
+      beforeEach(() => {
+        serverLogic = () => expect.fail("did not expect any requests on server");
+        target = http.createServer((req, res) => serverLogic(req, res));
+        target.listen(targetPort);
+      });
+
+      it("should map url", (done) => {
+        let requestedEndpoint: string | undefined;
+        proxy.registerStaticRoute("/rest", targetUrl + "/api");
+        serverLogic = (req, res) => {
+          requestedEndpoint = req.url;
+          res.writeHead(200, "OK");
+          res.end();
+        };
+
+        http.get(proxyUrl + "/rest/endpoint?q=search", () => {
+          expect(requestedEndpoint).to.equal("/api/endpoint?q=search");
+          done();
+        });
+      });
+
+      afterEach((done) => target.close(done));
     });
 
     afterEach((done) => {

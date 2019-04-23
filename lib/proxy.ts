@@ -24,7 +24,7 @@ function originOf(req: IncomingMessage) {
 
 export class MockCorsProxy {
   public readonly protocols: {
-    [protocol: string]: (req: IncomingMessage, res: ServerResponse, path: string[]) => void,
+    [protocol: string]: (req: IncomingMessage, res: ServerResponse, path: string) => void,
   } = {};
   public get registeredProtocols() {
     return Object.keys(this.protocols);
@@ -53,17 +53,22 @@ export class MockCorsProxy {
         return fail.withReason(`protocol is required as first path segment`);
       }
 
-      const [protocol, ...path] = url.split("/").slice(1);
-      this.config.log.info("got", protocol, path);
-      const handle = this.protocols[protocol];
-      if (typeof handle === "function") {
-        return handle(req, res, path);
-      } else {
+      const handler = Object.entries(this.protocols)
+        .filter(([key]) => url.substr(1).startsWith(key))
+        .sort((a, b) => a[0].length - b[0].length)
+        .map(([key, handle]) => ({ path: key, handle }))
+        .find((entry) => !!entry);
+
+      if (!handler) {
         return fail.withReason(
-          `unkonwn protocol: '${protocol}'.`,
-          `Registered protocols: ${this.registeredProtocolsString}`,
+          `no controller for url: '${url}'.`,
+          `Registered controllers: ${this.registeredProtocolsString}`,
         );
       }
+
+      const path = url.substr(handler.path.length + 1);
+      this.config.log.info("got", handler.path, path);
+      return handler.handle(req, res, path);
     });
     this.listen = this.server.listen.bind(this.server);
     this.close = this.server.close.bind(this.server);
@@ -76,6 +81,37 @@ export class MockCorsProxy {
     };
     this.protocols.http = (req, res, path) => this.forward(req, res, "http", path);
     this.protocols.https = (req, res, path) => this.forward(req, res, "https", path);
+  }
+
+  public registerStaticRoute(path: string, targetUrl: string) {
+    if (!path.startsWith("/")) {
+      throw new Error(`proxy url must start with "/" but is: "${targetUrl}"`);
+    }
+    const match = targetUrl.match(/(https?:)\/\/([^:\/]+)(:([0-9]+))(.*)/);
+    if (!match) {
+      throw new Error(`invalid target url: "${targetUrl}"`);
+    }
+
+    const target = {
+      url: targetUrl,
+      protocol: match[1],
+      hostname: match[2],
+      port: match[4],
+      path: match[5],
+    };
+    this.protocols[path.substr(1)] = (proxyRequest, proxyResponse, proxyRequestPath) => {
+      const options = {
+        protocol: target.protocol,
+        hostname: target.hostname,
+        port: target.port,
+        method: proxyRequest.method,
+        headers: proxyRequest.headers,
+        path: target.path  + proxyRequestPath,
+      } as RequestOptions;
+      this.config.log.info(options);
+
+      this.forwardTo(options, proxyRequest, proxyResponse);
+    };
   }
 
   private fail = (res: ServerResponse) => ({
@@ -102,9 +138,13 @@ export class MockCorsProxy {
     proxyRequest: IncomingMessage,
     proxyResponse: ServerResponse,
     protocol: "http" | "https",
-    path: string[],
+    path: string,
   ) {
-    const target = path.shift();
+    this.config.log.info("forward", { protocol, path });
+    if (!path.startsWith("/")) {
+      return this.fail(proxyResponse).withReason("invalid path", path);
+    }
+    const target = path.substr(1).split("/").shift();
     if (!target) {
       return this.fail(proxyResponse).withReason(reasons.target);
     }
@@ -112,10 +152,14 @@ export class MockCorsProxy {
     const [hostname, port] = target.split(":");
     const options = {
       protocol: protocol + ":", hostname, port, method: proxyRequest.method,
-      headers: proxyRequest.headers,
+      headers: proxyRequest.headers, path: path.substr(("/" + target).length),
     } as RequestOptions;
     this.config.log.info(options);
 
+    this.forwardTo(options, proxyRequest, proxyResponse);
+  }
+
+  private forwardTo(options: RequestOptions, proxyRequest: IncomingMessage, proxyResponse: ServerResponse) {
     const targetRequest = startHttpRequest(options, (targetResponse) => {
       const incomingHeaders = sillyReadRawHeaders(targetResponse.rawHeaders);
       this.config.log.info("incoming headers", incomingHeaders);
@@ -125,16 +169,16 @@ export class MockCorsProxy {
         ...corsHeaders,
       })
         .map(([key, value]) => value ? { key, value } : undefined)
-        .filter((entry): entry is { key: string, value: string | string[] } => !!(entry && entry.value))
-        .reduce((headers, header) => Object.assign(headers, { [header.key]: header.value }), {})
-      ;
+        .filter((entry): entry is {
+          key: string;
+          value: string | string[];
+        } => !!(entry && entry.value))
+        .reduce((headers, header) => Object.assign(headers, { [header.key]: header.value }), {});
       outgoingHeaders = this.rewriteCookieHeadersFor(proxyRequest).in(outgoingHeaders);
       this.config.log.info("outgoing headers", outgoingHeaders);
       proxyResponse.writeHead(targetResponse.statusCode || 200, targetResponse.statusMessage, outgoingHeaders);
-
       targetResponse.pipe(proxyResponse);
     });
-
     proxyRequest.on("error", (error) => this.config.log.warn("got error response", error));
     proxyRequest.pipe(targetRequest);
   }
