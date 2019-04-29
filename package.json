@@ -13,11 +13,21 @@
     "lint": "tslint -c tslint.json lib/**/*.ts"
   },
   "nyc": {
-    "include": [ "lib/**/*.ts" ],
-    "exclude": [ "lib/**/*.spec.ts "],
-    "extension": [ ".ts" ],
-    "require": [ "ts-node/register" ],
-    "reporter": [ "html" ],
+    "include": [
+      "lib/**/*.ts"
+    ],
+    "exclude": [
+      "lib/**/*.spec.ts "
+    ],
+    "extension": [
+      ".ts"
+    ],
+    "require": [
+      "ts-node/register"
+    ],
+    "reporter": [
+      "html"
+    ],
     "sourceMap": true,
     "instrument": true
   },
@@ -40,8 +50,8 @@
     "@types/mocha": "^5.2.6",
     "@types/node": "^11.9.6",
     "chai": "^4.2.0",
-    "mocha": "^6.0.2",
-    "nyc": "^13.3.0",
+    "mocha": "^6.1.4",
+    "nyc": "^14.1.0",
     "proxyquire": "^2.1.0",
     "ts-lint": "^4.5.1",
     "ts-mocha": "^6.0.0",
@@ -50,5 +60,8 @@
   },
   "files": [
     "lib/prod/**/*"
-  ]
+  ],
+  "dependencies": {
+    "commander": "^2.20.0"
+  }
 }
