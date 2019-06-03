@@ -23,6 +23,6 @@ const config = new MockCorsProxyConfig();
 const proxy = new MockCorsProxy(config);
 mappings.forEach((mapping) => proxy.registerStaticRoute(mapping.from, mapping.to));
 proxy.listen(commander.port || config.port);
-process.on("SIGTERM", function () {
+process.on("SIGTERM", function() {
   proxy.close();
 });

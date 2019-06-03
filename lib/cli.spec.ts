@@ -10,7 +10,7 @@ const silent = true;
 const log = silent ? () => { /* do not log */ } : (args: () => any) => {
   // tslint:disable-next-line: no-console
   console.log(args());
-}
+};
 
 function expectCleanExit(exitCode: number, errorOrOut: string, stderr?: string) {
   if (stderr !== undefined) {
@@ -57,7 +57,7 @@ function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults
   });
 }
 
-describe.only("proxy cli start", function() {
+describe("proxy cli start", function() {
   this.timeout(5000);
 
   it("should show help", function(done) {
@@ -169,7 +169,7 @@ describe.only("proxy cli start", function() {
       });
     });
 
-    it.only("should take alternative port", (done) => {
+    it("should take alternative port", (done) => {
       serverLogic = (_req, res) => {
         res.writeHead(200);
         res.end();
