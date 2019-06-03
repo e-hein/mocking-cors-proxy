@@ -37,24 +37,31 @@ function expectCleanExit(exitCode: number, errorOrOut: string, stderr?: string) 
 }
 
 function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults.port): Promise<ChildProcess> {
-  return new Promise((resolve) => {
-    log(() => ({ "start proxy": silent }));
-    const proxy = shelljs.exec(cmd, { silent }, function(code, stdout, stderr) {
-      expectCleanExit(code, stdout, stderr);
-    });
-    const isUp = setInterval(() => {
-      log(() => "test proxy");
-      const req = http.get(`http://localhost:${port}/${url}`, (res) => {
-        log(() => ({ "proxy response": res.statusCode}));
-        if (res.statusCode === 200) {
-          log(() => "proxy is up");
-          clearInterval(isUp);
-          resolve(proxy);
-        }
+  return Promise.resolve()
+    .then(function() {
+      return new Promise((resolve) => shelljs.exec(`kill \`lsof -i :${port}\``, { silent }, () => resolve()));
+    })
+    .then(function() {
+      return new Promise((resolve) => {
+        log(() => ({ "start proxy": silent }));
+        const proxy = shelljs.exec(cmd, { silent }, function(code, stdout, stderr) {
+          expectCleanExit(code, stdout, stderr);
+        });
+        const isUp = setInterval(() => {
+          log(() => "test proxy");
+          const req = http.get(`http://localhost:${port}/${url}`, (res) => {
+            log(() => ({ "proxy response": res.statusCode}));
+            if (res.statusCode === 200) {
+              log(() => "proxy is up");
+              clearInterval(isUp);
+              resolve(proxy);
+            }
+          });
+          req.on("error", () => log(() => "proxy connect error"));
+        }, 500);
       });
-      req.on("error", () => log(() => "proxy connect error"));
-    }, 500);
-  });
+    })
+  ;
 }
 
 describe("proxy cli start", function() {
