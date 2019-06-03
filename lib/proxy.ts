@@ -40,6 +40,7 @@ export class MockCorsProxy {
   constructor(
     public config: Readonly<MockCorsProxyConfig> = new MockCorsProxyConfig(),
   ) {
+    this.config.log.info("create proxy", config);
     this.server = createServer((req, res) => {
       const fail = this.fail(res);
 

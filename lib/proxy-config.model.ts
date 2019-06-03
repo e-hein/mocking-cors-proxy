@@ -1,5 +1,5 @@
 export class MockCorsProxyConfig {
-  public port = 80;
+  public port = 2345;
   public testUrl = "mocking-cors-proxy-test";
   // tslint:disable: no-console
   public log = {
