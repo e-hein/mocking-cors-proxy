@@ -23,7 +23,7 @@ const expectedHeaders = (expected: Array<{ key: string, value: any | null }>) =>
 ;
 
 describe("proxy", function() {
-  this.timeout(500);
+  this.timeout(5000);
 
   describe("started", function() {
     const proxyPort = nextPort++;
