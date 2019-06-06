@@ -1,4 +1,5 @@
 import commander from "commander";
+import * as fs from "fs";
 import { MockCorsProxy } from "./proxy";
 import { MockCorsProxyConfig } from "./proxy-config.model";
 
@@ -16,10 +17,14 @@ commander
   .version(packageJson.version)
   .option("-m, --map <...path to target>", "statically map an endpoint to real targets", endpointMapping)
   .option("-p, --port <port>", "start on alternative port (default is 2345")
+  .option("-c, --config <configJson>", "use config file")
 ;
 
 commander.parse(process.argv);
-const config = new MockCorsProxyConfig();
+const config = commander.config
+  ? Object.assign(new MockCorsProxyConfig(), JSON.parse(fs.readFileSync(commander.config, "utf-8")))
+  : new MockCorsProxyConfig()
+;
 const proxy = new MockCorsProxy(config);
 mappings.forEach((mapping) => proxy.registerStaticRoute(mapping.from, mapping.to));
 proxy.listen(commander.port || config.port);

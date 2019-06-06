@@ -1,0 +1,61 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema",
+  "title": "configuration file for mocking cors proxy",
+  "properties": {
+    "$schema": {
+      "title": "config validation only",
+      "description": "the schema property isn't used to configure the server, but for validation reasons only",
+      "default": "node_modules/mocking-cors-proxy/lib/config.schema.json",
+      "type": "string"
+    },
+    "port": {
+      "title": "proxy port",
+      "description": "the port to which the proxy server binds",
+      "default": 2345,
+      "type": "number"
+    },
+    "testUrl": {
+      "title": "monitoring test url",
+      "description": "this path is used to test if the proxy server is still up and running",
+      "default": "mocking-cors-proxy-test",
+      "type": "string"
+    },
+    "accessControl": {
+      "title": "access control defails",
+      "description": "detail configuration for access control responses",
+      "type": "object",
+      "properties": {
+        "methods": {
+          "title": "methods to allow",
+          "description": "http methods to allow in the Access-Control-Allow-Methods response header",
+          "default": [ "GET", "HEAD", "PUT", "PATCH", "POST", "DELETE" ],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "requestHeaders": {
+          "title": "request headers to allow",
+          "description": "request headers to allow in the Access-Control-Request-Headers response header",
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "maxAge": {
+          "title": "cors max age",
+          "description": "time to cache cors responses before request new cors",
+          "default": 10,
+          "type": "number"
+        }
+      }
+    },
+    "security": {
+      "title": "secure cookies",
+      "description": "by default secure options from cookie will get removed",
+      "default": false,
+      "type": "boolean"
+    }
+  }
+}

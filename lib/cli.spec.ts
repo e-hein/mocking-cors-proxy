@@ -195,5 +195,24 @@ describe("proxy cli start", function() {
         });
       });
     });
+
+    it("should use given config file", (done) => {
+      serverLogic = (_req, res) => {
+        res.writeHead(200);
+        res.end();
+      };
+
+      const startupCmd = `npm run cli --`
+        + ` --config test-config.json`
+      ;
+      startProxy(startupCmd, defaults.testUrl, 2356).then((proxyProcess) => {
+        http.get(requestUrl.replace("" + proxyPort, "" + 2356), (res) => {
+          expect(!!proxyProcess).to.equal(true);
+          proxyProcess.kill("SIGTERM");
+          expect(res.statusCode).to.equal(200);
+          done();
+        });
+      });
+    });
   });
 });
