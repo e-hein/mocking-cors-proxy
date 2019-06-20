@@ -1,4 +1,10 @@
 {
   "$schema": "./lib/config.schema.json",
-  "port": 2356
+  "port": 2356,
+  "staticRoutes": [
+    {
+      "from": "/mapped-path",
+      "to": "http://localhost:2344/target"
+    }
+  ]
 }

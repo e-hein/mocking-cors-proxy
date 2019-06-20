@@ -41,11 +41,12 @@ describe("proxy", function() {
         warn: (...args) => warnings.push(args),
         error: (...args) => errors.push(args),
       };
+      proxyConfig.port = proxyPort;
       if (infoLogAll) {
         thisTestShouldLogInfoMessages();
       }
       proxy = new MockCorsProxy(proxyConfig);
-      proxy.listen(proxyPort);
+      proxy.start();
     });
 
     function thisTestShouldNotFailOnErrorResponse() {
@@ -486,4 +487,44 @@ describe("proxy", function() {
     });
   });
 
+  describe("inital config", () => {
+    it("can register static routes", (done) => {
+      // given
+      const proxyPort = nextPort++;
+      const proxyHost = "localhost";
+      const proxyUrl = `http://${proxyHost}:${proxyPort}`;
+
+      const config = new MockCorsProxyConfig();
+      config.port = proxyPort;
+      config.log.info = () => { /* do not log info */ };
+
+      const targetProtocol = "http";
+      const targetHost = "127.0.0.1";
+      const targetPort = nextPort++;
+      const targetUrl = `${targetProtocol}://${targetHost}:${targetPort}`;
+      let requestedEndpoint: string | undefined;
+
+      const target = http.createServer((req, res) => {
+        requestedEndpoint = req.url;
+        res.writeHead(200, "OK");
+        res.end();
+      });
+      target.listen(targetPort);
+
+      // when
+      config.staticRoutes = [
+        { from: "/target", to: targetUrl + "/static-target" },
+      ];
+      const proxy = new MockCorsProxy(config);
+      proxy.start();
+
+      // then
+      http.get(proxyUrl + "/target/endpoint?q=search", () => {
+        target.close();
+        proxy.close();
+        expect(requestedEndpoint).to.equal("/static-target/endpoint?q=search");
+        done();
+      });
+    });
+  });
 });

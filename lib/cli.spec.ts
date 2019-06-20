@@ -1,5 +1,6 @@
 import { expect } from "chai";
 import { ChildProcess } from "child_process";
+import * as fs from "fs";
 import http from "http";
 import shelljs from "shelljs";
 import { MockCorsProxyConfig } from "./proxy-config.model";
@@ -196,21 +197,48 @@ describe("proxy cli start", function() {
       });
     });
 
-    it("should use given config file", (done) => {
-      serverLogic = (_req, res) => {
-        res.writeHead(200);
-        res.end();
-      };
+    describe("with config file", () => {
+      it ("should set port", (done) => {
+        const testConfigFile = "test-config.json";
+        const testConfig = JSON.parse(fs.readFileSync(testConfigFile, "utf-8"));
 
-      const startupCmd = `npm run cli --`
-        + ` --config test-config.json`
-      ;
-      startProxy(startupCmd, defaults.testUrl, 2356).then((proxyProcess) => {
-        http.get(requestUrl.replace("" + proxyPort, "" + 2356), (res) => {
-          expect(!!proxyProcess).to.equal(true);
-          proxyProcess.kill("SIGTERM");
-          expect(res.statusCode).to.equal(200);
-          done();
+        serverLogic = (_req, res) => {
+          res.writeHead(200);
+          res.end();
+        };
+
+        const startupCmd = `npm run cli --`
+          + ` --config test-config.json`
+        ;
+        startProxy(startupCmd, defaults.testUrl, testConfig.port).then((proxyProcess) => {
+          http.get(requestUrl.replace("" + proxyPort, "" + testConfig.port), (res) => {
+            expect(!!proxyProcess).to.equal(true);
+            proxyProcess.kill("SIGTERM");
+            expect(res.statusCode).to.equal(200);
+            done();
+          });
+        });
+      });
+
+      it("should register static routes", (done) => {
+        const testConfigFile = "test-config.json";
+        const testConfig: MockCorsProxyConfig = JSON.parse(fs.readFileSync(testConfigFile, "utf-8"));
+
+        serverLogic = (req, res) => {
+          res.writeHead(200, req.url);
+          res.end();
+        };
+
+        const startupCmd = `npm run cli --`
+          + ` --config test-config.json`
+        ;
+        startProxy(startupCmd, undefined, testConfig.port).then((proxyProcess) => {
+          log(() => "proxy startet");
+          http.get(proxyUrl.replace("" + proxyPort, "" + testConfig.port) + "/mapped-path/search", (res) => {
+            expect(res.statusMessage).to.equal("/target/search");
+            proxyProcess.kill("SIGTERM");
+            done();
+          });
         });
       });
     });

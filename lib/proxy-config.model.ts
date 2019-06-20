@@ -1,3 +1,5 @@
+import { StaticRoute } from "./static-route.model";
+
 export class MockCorsProxyConfig {
   public port = 2345;
   public testUrl = "mocking-cors-proxy-test";
@@ -18,4 +20,5 @@ export class MockCorsProxyConfig {
     maxAge: 10,
   };
   public security = false;
+  public staticRoutes: StaticRoute[] = [];
 }

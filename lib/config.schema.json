@@ -56,6 +56,31 @@
       "description": "by default secure options from cookie will get removed",
       "default": false,
       "type": "boolean"
+    },
+    "staticRoutes": {
+      "title": "static routes",
+      "description": "static path mappings",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "from": {
+            "title": "path to map from",
+            "description": "this path will get routed to the given target (starting with slash but without trailing slash)",
+            "minLength": 1,
+            "type": "string",
+            "default": "/mapped-path"
+          },
+          "to": {
+            "title": "uri to map to",
+            "description": "this is the mapping target uri (without trailing slash)",
+            "type": "string",
+            "default": "https://example.com/target"
+          }
+        },
+        "required": [ "from", "to" ]
+      }
     }
   }
 }

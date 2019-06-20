@@ -82,6 +82,7 @@ export class MockCorsProxy {
     };
     this.protocols.http = (req, res, path) => this.forward(req, res, "http", path);
     this.protocols.https = (req, res, path) => this.forward(req, res, "https", path);
+    this.config.staticRoutes.forEach(({from, to}) => this.registerStaticRoute(from, to));
   }
 
   public registerStaticRoute(path: string, targetUrl: string) {
@@ -113,6 +114,10 @@ export class MockCorsProxy {
 
       this.forwardTo(options, proxyRequest, proxyResponse);
     };
+  }
+
+  public start() {
+    this.listen(this.config.port);
   }
 
   private fail = (res: ServerResponse) => ({
