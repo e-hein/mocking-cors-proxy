@@ -19,6 +19,7 @@ test-proxy:
   script:
     - sh clean-up.sh
     - npm run test
+  after_script:
     - sh clean-up.sh
 
 build-proxy:
