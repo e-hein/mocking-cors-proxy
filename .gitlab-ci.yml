@@ -17,7 +17,9 @@ initialize-build:
 test-proxy:
   stage: test
   script:
+    - sh clean-up.sh
     - npm run test
+    - sh clean-up.sh
 
 build-proxy:
   stage: build
