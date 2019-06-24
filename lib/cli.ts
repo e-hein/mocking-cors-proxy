@@ -3,8 +3,6 @@ import * as fs from "fs";
 import { MockCorsProxy } from "./proxy";
 import { MockCorsProxyConfig } from "./proxy-config.model";
 
-// tslint:disable-next-line: no-var-requires
-const packageJson = require("../package.json");
 const mappings: Array<{ from: string, to: string }> = [];
 
 function endpointMapping(val: string) {
@@ -14,7 +12,7 @@ function endpointMapping(val: string) {
   return mappings;
 }
 commander
-  .version(packageJson.version)
+  .version("0.0.1")
   .option("-m, --map <...path to target>", "statically map an endpoint to real targets", endpointMapping)
   .option("-p, --port <port>", "start on alternative port (default is 2345")
   .option("-c, --config <configJson>", "use config file")

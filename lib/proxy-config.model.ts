@@ -2,6 +2,7 @@ import { StaticRoute } from "./static-route.model";
 
 export class MockCorsProxyConfig {
   public port = 2345;
+  public host = "localhost";
   public testUrl = "mocking-cors-proxy-test";
   // tslint:disable: no-console
   public log = {

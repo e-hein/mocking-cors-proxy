@@ -2,6 +2,9 @@ import {
   createServer, IncomingMessage, OutgoingHttpHeaders, request as startHttpRequest,
   RequestOptions, Server, ServerResponse,
 } from "http";
+import {
+  request as startHttpsRequest,
+} from "https";
 import { MockCorsProxyConfig } from "./proxy-config.model";
 import { sillyReadRawHeaders } from "./silly-read-raw-headers.function";
 
@@ -89,7 +92,7 @@ export class MockCorsProxy {
     if (!path.startsWith("/")) {
       throw new Error(`proxy url must start with "/" but is: "${targetUrl}"`);
     }
-    const match = targetUrl.match(/(https?:)\/\/([^:\/]+)(:([0-9]+))(.*)/);
+    const match = targetUrl.match(/(https?:)\/\/([^:\/]+)(:([0-9]+))?(.*)/);
     if (!match) {
       throw new Error(`invalid target url: "${targetUrl}"`);
     }
@@ -105,9 +108,13 @@ export class MockCorsProxy {
       const options = {
         protocol: target.protocol,
         hostname: target.hostname,
+        servername: target.hostname,
         port: target.port,
         method: proxyRequest.method,
-        headers: proxyRequest.headers,
+        headers: {
+          ...proxyRequest.headers,
+          host: target.hostname,
+        },
         path: target.path  + proxyRequestPath,
       } as RequestOptions;
       this.config.log.info(options);
@@ -117,7 +124,7 @@ export class MockCorsProxy {
   }
 
   public start() {
-    this.listen(this.config.port);
+    this.listen(this.config.port, this.config.host);
   }
 
   private fail = (res: ServerResponse) => ({
@@ -157,7 +164,11 @@ export class MockCorsProxy {
 
     const [hostname, port] = target.split(":");
     const options = {
-      protocol: protocol + ":", hostname, port, method: proxyRequest.method,
+      protocol: protocol + ":",
+      hostname,
+      servername: hostname,
+      port,
+      method: proxyRequest.method,
       headers: proxyRequest.headers, path: path.substr(("/" + target).length),
     } as RequestOptions;
     this.config.log.info(options);
@@ -166,7 +177,8 @@ export class MockCorsProxy {
   }
 
   private forwardTo(options: RequestOptions, proxyRequest: IncomingMessage, proxyResponse: ServerResponse) {
-    const targetRequest = startHttpRequest(options, (targetResponse) => {
+    const startRequest = options.protocol === "https:" ? startHttpsRequest : startHttpRequest;
+    const targetRequest = startRequest(options, (targetResponse) => {
       const incomingHeaders = sillyReadRawHeaders(targetResponse.rawHeaders);
       this.config.log.info("incoming headers", incomingHeaders);
       const corsHeaders = this.corsHeadersFor(proxyRequest, targetResponse, incomingHeaders);
@@ -190,7 +202,6 @@ export class MockCorsProxy {
   }
 
   private rewriteCookieHeadersFor = (req: IncomingMessage) => {
-    const path = req.url || "/";
     const domain = originOf(req);
     const rewriteCookie = (cookieString: string): string => {
       const cookieParts = cookieString.split(/\s*;\s*/);
@@ -214,19 +225,19 @@ export class MockCorsProxy {
         domainPart.forEach((cookie) => cookie[cookieValueIndex] = domain);
       }
 
-      const pathParts = parsedCookie.filter(([key]) => key.match(/path/i));
-      if (pathParts.length < 1) {
-        parsedCookie.push(["Path", path]);
-      } else {
-        if (pathParts.length > 1) {
-          this.config.log.warn("forwarding invalid cookie with multiple path parts:", parsedCookie);
-        }
-        pathParts.forEach((cookie) => {
-          const origPath = cookie[cookieValueIndex];
-          const adjustedPath = `${path}${origPath}`;
-          cookie[cookieValueIndex] = adjustedPath;
-        });
-      }
+      // const pathParts = parsedCookie.filter(([key]) => key.match(/path/i));
+      // if (pathParts.length < 1) {
+      //   parsedCookie.push(["Path", ""]);
+      // } else {
+      //   if (pathParts.length > 1) {
+      //     this.config.log.warn("forwarding invalid cookie with multiple path parts:", parsedCookie);
+      //   }
+      //   pathParts.forEach((cookie) => {
+      //     const origPath = cookie[cookieValueIndex];
+      //     const adjustedPath = `${path}${origPath}`;
+      //     cookie[cookieValueIndex] = adjustedPath;
+      //   });
+      // }
 
       const adjustedCookieString = [[name, value], ...parsedCookie].map((cookie) => cookie.join("=")).join("; ");
       this.config.log.info(`adjusted cookie string\nfrom : ${cookieString}\n to  : ${adjustedCookieString}`);
@@ -274,7 +285,7 @@ export class MockCorsProxy {
       corsHeaders["Access-Control-Expose-Headers"] = exposeHeaders;
     }
     if (proxyRequest.method === "OPTIONS") {
-      corsHeaders["Access-Control-Request-Headers"] = this.config.accessControl.requestHeaders;
+      corsHeaders["Access-Control-Allow-Headers"] = this.config.accessControl.requestHeaders;
     }
     return corsHeaders;
   }

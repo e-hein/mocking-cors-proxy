@@ -14,6 +14,12 @@
       "default": 2345,
       "type": "number"
     },
+    "host": {
+      "title": "proxy host ip",
+      "description": "Host ip to bind to. Defaults to localhost. Use '0.0.0.0' for all IP adresses",
+      "default": "localhost",
+      "type": "string"
+    },
     "testUrl": {
       "title": "monitoring test url",
       "description": "this path is used to test if the proxy server is still up and running",
