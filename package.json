@@ -11,6 +11,7 @@
     "dev": "ts-node lib/app.ts",
     "test": "ts-mocha lib/**/*.spec.ts",
     "test:watch": "ts-mocha -w lib/**/*.spec.ts --watch-extensions ts",
+    "precoverage": "npm run build",
     "coverage": "nyc --reporter=html ts-mocha **/*.spec.ts",
     "lint": "tslint -c tslint.json lib/**/*.ts"
   },

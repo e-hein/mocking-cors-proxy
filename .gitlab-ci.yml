@@ -18,7 +18,7 @@ test-proxy:
   stage: test
   script:
     - sh clean-up.sh
-    - npm run test
+    - npm run coverage
   after_script:
     - sh clean-up.sh
 
