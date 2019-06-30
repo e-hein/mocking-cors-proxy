@@ -5,13 +5,13 @@
   "main": "lib/app.js",
   "scripts": {
     "build": "tsc -p tsconfig.prod.json",
-    "cli": "ts-node lib/cli.ts",
+    "cli": "node dist/prod/cli.js",
     "prestart": "npm run build",
     "start": "node dist/prod/app.js",
     "dev": "ts-node lib/app.ts",
     "test": "ts-mocha lib/**/*.spec.ts",
     "test:watch": "ts-mocha -w lib/**/*.spec.ts --watch-extensions ts",
-    "coverage": "nyc --reporter=html mocha -r ts-node/register **/*.spec.ts",
+    "coverage": "nyc --reporter=html ts-mocha **/*.spec.ts",
     "lint": "tslint -c tslint.json lib/**/*.ts"
   },
   "nyc": {
