@@ -292,7 +292,7 @@ export class MockingCorsProxy {
       corsHeaders["Access-Control-Expose-Headers"] = exposeHeaders;
     }
     if (proxyRequest.method === "OPTIONS") {
-      corsHeaders["Access-Control-Allow-Headers"] = this.config.accessControl.requestHeaders.join(",");
+      corsHeaders["Access-Control-Allow-Headers"] = this.config.accessControl.requestHeaders;
     }
     return corsHeaders;
   }
