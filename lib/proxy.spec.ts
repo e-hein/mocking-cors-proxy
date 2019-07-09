@@ -1,8 +1,8 @@
 import { expect } from "chai";
 import http, { IncomingHttpHeaders, IncomingMessage } from "http";
 
-import { MockCorsProxy } from "./proxy";
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockingCorsProxy } from "./proxy";
+import { MockingCorsProxyConfig } from "./proxy-config.model";
 
 let nextPort = 2360;
 const infoLogAll = false;
@@ -31,11 +31,11 @@ describe("proxy", function() {
     const proxyUrl = `http://${proxyHost}:${proxyPort}`;
     const warnings: any[][] = [];
     const errors: any[][] = [];
-    let proxy: MockCorsProxy;
-    let proxyConfig: MockCorsProxyConfig;
+    let proxy: MockingCorsProxy;
+    let proxyConfig: MockingCorsProxyConfig;
 
     beforeEach(function() {
-      proxyConfig = new MockCorsProxyConfig();
+      proxyConfig = new MockingCorsProxyConfig();
       proxyConfig.log = {
         info: () => { /* do not log*/},
         warn: (...args) => warnings.push(args),
@@ -46,7 +46,7 @@ describe("proxy", function() {
       if (infoLogAll) {
         thisTestShouldLogInfoMessages();
       }
-      proxy = new MockCorsProxy(proxyConfig);
+      proxy = new MockingCorsProxy(proxyConfig);
       proxy.start();
     });
 
@@ -495,7 +495,7 @@ describe("proxy", function() {
       const proxyHost = "localhost";
       const proxyUrl = `http://${proxyHost}:${proxyPort}`;
 
-      const config = new MockCorsProxyConfig();
+      const config = new MockingCorsProxyConfig();
       config.port = proxyPort;
       config.log.info = () => { /* do not log info */ };
 
@@ -518,7 +518,7 @@ describe("proxy", function() {
       config.staticRoutes = [
         { from: "/target", to: targetUrl + "/static-target" },
       ];
-      const proxy = new MockCorsProxy(config);
+      const proxy = new MockingCorsProxy(config);
       proxy.start();
 
       // then

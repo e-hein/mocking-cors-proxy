@@ -5,7 +5,7 @@ import {
 import {
   request as startHttpsRequest,
 } from "https";
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockingCorsProxyConfig } from "./proxy-config.model";
 import { sillyReadRawHeaders } from "./silly-read-raw-headers.function";
 
 const reasons = {
@@ -23,7 +23,7 @@ function originOf(req: IncomingMessage) {
   ;
 }
 
-export class MockCorsProxy {
+export class MockingCorsProxy {
   public readonly protocols: {
     [protocol: string]: (req: IncomingMessage, res: ServerResponse, path: string) => void,
   } = {};
@@ -39,7 +39,7 @@ export class MockCorsProxy {
   }
 
   constructor(
-    public config: Readonly<MockCorsProxyConfig> = new MockCorsProxyConfig(),
+    public config: Readonly<MockingCorsProxyConfig> = new MockingCorsProxyConfig(),
   ) {
     this.config.log.info("create proxy", config);
     this.server = createServer((req, res) => {

@@ -1,7 +1,7 @@
 import commander from "commander";
 import * as fs from "fs";
-import { MockCorsProxy } from "./proxy";
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockingCorsProxy } from "./proxy";
+import { MockingCorsProxyConfig } from "./proxy-config.model";
 import { StaticRoute } from "./static-route.model";
 
 const mappings: StaticRoute[] = [];
@@ -22,10 +22,10 @@ export function run(args: string[]) {
 
   commander.parse(args);
   const config = commander.config
-    ? Object.assign(new MockCorsProxyConfig(), JSON.parse(fs.readFileSync(commander.config, "utf-8")))
-    : new MockCorsProxyConfig()
+    ? Object.assign(new MockingCorsProxyConfig(), JSON.parse(fs.readFileSync(commander.config, "utf-8")))
+    : new MockingCorsProxyConfig()
   ;
-  const proxy = new MockCorsProxy(config);
+  const proxy = new MockingCorsProxy(config);
   if (commander.map) {
     mappings.forEach((mapping: StaticRoute) => proxy.registerStaticRoute(mapping.from, mapping.to));
   }

@@ -3,10 +3,10 @@ import * as fs from "fs";
 import http from "http";
 import shelljs from "shelljs";
 
-import { MockCorsProxy } from "./proxy";
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockingCorsProxy } from "./proxy";
+import { MockingCorsProxyConfig } from "./proxy-config.model";
 
-const defaults = new MockCorsProxyConfig();
+const defaults = new MockingCorsProxyConfig();
 const silent = true;
 
 const log = silent ? () => { /* do not log */ } : (args: () => any) => {
@@ -43,7 +43,7 @@ function cleanRequire(module: string) {
   return require(module);
 }
 
-function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults.port): Promise<MockCorsProxy> {
+function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults.port): Promise<MockingCorsProxy> {
   delete require.cache[require.resolve("commander")];
   const runner = cleanRequire("./cli-runner");
   const splitArgs = cleanRequire("string-argv").default;
@@ -223,7 +223,7 @@ describe("proxy cli start", function() {
 
       it("should register static routes", (done) => {
         const testConfigFile = "test-config.json";
-        const testConfig: MockCorsProxyConfig = JSON.parse(fs.readFileSync(testConfigFile, "utf-8"));
+        const testConfig: MockingCorsProxyConfig = JSON.parse(fs.readFileSync(testConfigFile, "utf-8"));
 
         serverLogic = (req, res) => {
           res.writeHead(200, req.url);

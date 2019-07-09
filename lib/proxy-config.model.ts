@@ -1,6 +1,6 @@
 import { StaticRoute } from "./static-route.model";
 
-export class MockCorsProxyConfig {
+export class MockingCorsProxyConfig {
   public port = 2345;
   public host = "localhost";
   public testUrl = "mocking-cors-proxy-test";

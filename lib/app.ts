@@ -1,6 +1,6 @@
-import { MockCorsProxy } from "./proxy";
-import { MockCorsProxyConfig } from "./proxy-config.model";
+import { MockingCorsProxy } from "./proxy";
+import { MockingCorsProxyConfig } from "./proxy-config.model";
 
-const proxyConfig = new MockCorsProxyConfig();
-const proxy = new MockCorsProxy(proxyConfig);
+const proxyConfig = new MockingCorsProxyConfig();
+const proxy = new MockingCorsProxy(proxyConfig);
 proxy.listen();

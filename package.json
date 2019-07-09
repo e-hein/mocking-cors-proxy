@@ -1,5 +1,5 @@
 {
-  "name": "mock-cors-proxy",
+  "name": "mocking-cors-proxy",
   "version": "0.0.1",
   "description": "mock cors header for development and testing",
   "main": "lib/app.js",
