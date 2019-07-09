@@ -5,6 +5,7 @@
   "main": "lib/app.js",
   "scripts": {
     "build": "tsc -p tsconfig.prod.json",
+    "postbuild": "cp lib/cli.js dist/prod/",
     "cli": "node dist/prod/cli.js",
     "prestart": "npm run build",
     "start": "node dist/prod/app.js",
@@ -58,6 +59,7 @@
     "nyc": "^13.3.0",
     "proxyquire": "^2.1.0",
     "shelljs": "^0.8.3",
+    "string-argv": "^0.3.0",
     "ts-lint": "^4.5.1",
     "ts-mocha": "^6.0.0",
     "ts-node": "^8.0.3",
@@ -68,5 +70,8 @@
   ],
   "dependencies": {
     "commander": "^2.20.0"
+  },
+  "bin": {
+    "mocking-cors-proxy": "./dist/prod/cli.js"
   }
 }

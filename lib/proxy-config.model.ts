@@ -6,7 +6,11 @@ export class MockCorsProxyConfig {
   public testUrl = "mocking-cors-proxy-test";
   // tslint:disable: no-console
   public log = {
-    info: (...args: any[]) => console.log(...args),
+    info: (...args: any[]) => {
+      if (process.env.DEBUG) {
+        console.log(...args);
+      }
+    },
     error: (...args: any[]) => console.error(...args),
     warn: (...args: any[]) => console.error(...args),
   };

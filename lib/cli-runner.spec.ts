@@ -1,8 +1,9 @@
 import { expect } from "chai";
-import { ChildProcess } from "child_process";
 import * as fs from "fs";
 import http from "http";
 import shelljs from "shelljs";
+
+import { MockCorsProxy } from "./proxy";
 import { MockCorsProxyConfig } from "./proxy-config.model";
 
 const defaults = new MockCorsProxyConfig();
@@ -37,17 +38,22 @@ function expectCleanExit(exitCode: number, errorOrOut: string, stderr?: string) 
   expect(exitCode).to.equal(0);
 }
 
-function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults.port): Promise<ChildProcess> {
+function cleanRequire(module: string) {
+  delete require.cache[require.resolve(module)];
+  return require(module);
+}
+
+function startProxy(cmd = "npm run cli", url = defaults.testUrl, port = defaults.port): Promise<MockCorsProxy> {
+  delete require.cache[require.resolve("commander")];
+  const runner = cleanRequire("./cli-runner");
+  const splitArgs = cleanRequire("string-argv").default;
+
   return Promise.resolve()
-    .then(function() {
-      return new Promise((resolve) => shelljs.exec(`kill \`lsof -i :${port}\``, { silent }, () => resolve()));
-    })
     .then(function() {
       return new Promise((resolve) => {
         log(() => ({ "start proxy": silent }));
-        const proxy = shelljs.exec(cmd, { silent }, function(code, stdout, stderr) {
-          expectCleanExit(code, stdout, stderr);
-        });
+        const args = splitArgs(cmd);
+        const proxy = runner.run(args);
         const isUp = setInterval(() => {
           log(() => "test proxy");
           const req = http.get(`http://localhost:${port}/${url}`, (res) => {
@@ -87,7 +93,7 @@ describe("proxy cli start", function() {
 
   it("should start proxy", function(done) {
     startProxy()
-      .then((proxy) => proxy.kill())
+      .then((proxy) => proxy.close())
       .then(() => done())
     ;
   });
@@ -115,10 +121,10 @@ describe("proxy cli start", function() {
         res.end();
       };
 
-      startProxy().then((proxyProcess) => {
+      startProxy().then((proxy) => {
         http.get(requestUrl, (res) => {
-          expect(!!proxyProcess).to.equal(true);
-          proxyProcess.kill("SIGTERM");
+          expect(!!proxy).to.equal(true);
+          proxy.close();
           expect(res.statusCode).to.equal(200);
           done();
         });
@@ -143,14 +149,12 @@ describe("proxy cli start", function() {
       }
 
       it("should register one route", function() {
-        const startupCmd = `npm run cli --`
-          + ` --map "/mapping-test to http://127.0.0.1:2344/target"`
-        ;
+        const startupCmd = `npm run cli --map "/mapping-test to http://127.0.0.1:2344/target"`;
 
         log(() => ({ "startup cmd": startupCmd }));
         return startProxy(startupCmd)
-          .then((proxyProcess) => {
-            const cleanUp = () => proxyProcess.kill("SIGTERM");
+          .then((proxy) => {
+            const cleanUp = () => proxy.close();
             return testMapping("/mapping-test", "/target")
               .then(cleanUp, cleanUp)
             ;
@@ -159,14 +163,14 @@ describe("proxy cli start", function() {
       });
 
       it("should register multiple static routes", function() {
-        const startupCmd = `npm run cli --`
+        const startupCmd = `npm run cli`
           + ` --map "/mapping-test to http://127.0.0.1:2344/target"`
           + ` --map "/another-mapping to http://127.0.0.1:2344/another-target"`
         ;
         log(() => ({ "startup cmd": startupCmd }));
         return startProxy(startupCmd)
-          .then((proxyProcess) => {
-            const cleanUp = () => proxyProcess.kill("SIGTERM");
+          .then((proxy) => {
+            const cleanUp = () => proxy.close();
             return Promise.resolve()
               .then(() => testMapping("/mapping-test", "/target"))
               .then(() => testMapping("/another-mapping", "/another-target"))
@@ -183,14 +187,12 @@ describe("proxy cli start", function() {
         res.end();
       };
 
-      const startupCmd = `npm run cli --`
-        + ` --port 2355`
-      ;
+      const startupCmd = `npm run cli --port 2355`;
 
-      startProxy(startupCmd, defaults.testUrl, 2355).then((proxyProcess) => {
+      startProxy(startupCmd, defaults.testUrl, 2355).then((proxy) => {
         http.get(requestUrl.replace("" + proxyPort, "" + 2355), (res) => {
-          expect(!!proxyProcess).to.equal(true);
-          proxyProcess.kill("SIGTERM");
+          expect(!!proxy).to.equal(true);
+          proxy.close();
           expect(res.statusCode).to.equal(200);
           done();
         });
@@ -207,13 +209,12 @@ describe("proxy cli start", function() {
           res.end();
         };
 
-        const startupCmd = `npm run cli --`
-          + ` --config test-config.json`
+        const startupCmd = `npm run cli --config test-config.json`
         ;
-        startProxy(startupCmd, defaults.testUrl, testConfig.port).then((proxyProcess) => {
+        startProxy(startupCmd, defaults.testUrl, testConfig.port).then((proxy) => {
           http.get(requestUrl.replace("" + proxyPort, "" + testConfig.port), (res) => {
-            expect(!!proxyProcess).to.equal(true);
-            proxyProcess.kill("SIGTERM");
+            expect(!!proxy).to.equal(true);
+            proxy.close();
             expect(res.statusCode).to.equal(200);
             done();
           });
@@ -229,14 +230,13 @@ describe("proxy cli start", function() {
           res.end();
         };
 
-        const startupCmd = `npm run cli --`
-          + ` --config test-config.json`
+        const startupCmd = `npm run cli --config test-config.json`
         ;
-        startProxy(startupCmd, undefined, testConfig.port).then((proxyProcess) => {
+        startProxy(startupCmd, undefined, testConfig.port).then((proxy) => {
           log(() => "proxy startet");
           http.get(proxyUrl.replace("" + proxyPort, "" + testConfig.port) + "/mapped-path/search", (res) => {
             expect(res.statusMessage).to.equal("/target/search");
-            proxyProcess.kill("SIGTERM");
+            proxy.close();
             done();
           });
         });
