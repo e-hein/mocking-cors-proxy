@@ -1,6 +1,6 @@
 {
   "name": "mocking-cors-proxy",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "mock cors header for development and testing",
   "main": "lib/app.js",
   "scripts": {
