@@ -1,0 +1,18 @@
+{
+  "port": 8081,
+  "host": "0.0.0.0",
+  "accessControl": {
+    "methods": [
+      "GET", "HEAD", "PUT", "PATCH", "POST", "DELETE"
+    ],
+    "maxAge": 10,
+    "requestHeaders": [
+      "Authorization", "X-Custom-Header"
+    ]
+  },
+  "staticRoutes": [
+    { "from": "/app/", "to": "http://localhost:4200" },
+    { "from": "/app2", "to": "http://localhost:4200/app/" },
+    { "from": "/rest", "to": "http://localhost:3000/rest/" }
+  ]
+}
